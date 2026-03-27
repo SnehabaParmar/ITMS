@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}SYS_CORE{% endblock %}
+
+{% block content %}
+<div
+    class="h-full min-h-[100vh] flex flex-col justify-center items-center text-center relative px-4 mx-auto w-full py-20 overflow-hidden">
+
+    <!-- Background Decorators / Flares -->
+    <div
+        class="absolute top-[-10%] left-1/4 w-[600px] h-[600px] bg-neon-cyan/5 rounded-full blur-[120px] pointer-events-none">
+    </div>
+    <div
+        class="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-neon-purple/10 rounded-full blur-[100px] pointer-events-none">
+    </div>
+
+    <!-- Central UI Element / Cyber Core -->
+    <div class="relative w-48 h-48 mb-12 flex items-center justify-center mt-[-10vh]">
+        <!-- Spinning Rings -->
+        <div
+            class="absolute inset-0 border border-neon-cyan rounded-full animate-[spin_10s_linear_infinite] opacity-50 border-t-transparent shadow-[0_0_15px_rgba(0,240,255,0.2)]">
+        </div>
+        <div
+            class="absolute inset-3 border-2 border-neon-purple rounded-full animate-[spin_7s_linear_infinite_reverse] opacity-50 border-b-transparent">
+        </div>
+        <div
+            class="absolute inset-8 border border-dashed border-alert-red rounded-full animate-[spin_15s_linear_infinite] opacity-40 border-l-transparent">
+        </div>
+
+        <!-- Core Icon -->
+        <div class="relative z-10 text-white flex flex-col items-center justify-center">
+            <i
+                class="fa-solid fa-network-wired text-5xl mb-2 text-neon-cyan drop-shadow-[0_0_15px_#00f0ff] transform hover:scale-110 transition-transform"></i>
+            <!-- <span
+                class="font-mono text-[10px] text-black font-bold tracking-widest bg-neon-cyan px-2 py-0.5 shadow-[0_0_10px_#00f0ff]">ITMS</span> -->
+        </div>
+    </div>
+
+    <!-- Hero Titles -->
+    <h1
+        class="font-display text-5xl md:text-8xl font-bold uppercase tracking-tighter mb-4 text-white drop-shadow-lg z-10">
+        Traffic <span
+            class="text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-purple filter drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]">Nexus</span>
+    </h1>
+
+    <!-- Terminal Output aesthetic -->
+    <div
+        class="font-mono text-xs md:text-sm text-slate-400 max-w-2xl mb-12 leading-relaxed border-l-2 border-neon-cyan pl-4 text-left mx-auto bg-black/40 p-4 rounded-r-lg backdrop-blur-sm border-y border-r border-slate-800 z-10 relative overflow-hidden group">
+        <div
+            class="absolute left-0 top-0 w-full h-[1px] bg-neon-cyan/50 opacity-0 group-hover:opacity-100 group-hover:animate-[scan_2s_linear_infinite]">
+        </div>
+        <p class="mb-2 text-center">
+            <span class="text-neon-purple text-2xl ">INTELLIGENT TRAFFIC MANAGEMENT SYSTEM</span><br>
+        </p>
+
+        <p class="text-slate-300 font-sans border-t border-slate-800 pt-3 mt-3 shadow-inner text-center">
+            Advanced automated traffic control system utilizing deep neural networks for real-time intersection
+            optimization, anomaly detection, and emergency routing protocols.
+        </p>
+    </div>
+
+    <!-- Cyber Buttons -->
+    <div class="flex flex-col sm:flex-row gap-6 z-10">
+        <a href="/upload" class="cyber-button px-10 py-5 text-lg shadow-[0_0_20px_rgba(0,240,255,0.15)] group">
+            <i class="fa-solid fa-satellite-dish mr-3 group-hover:animate-ping"></i> Initialize Traffic setup
+        </a>
+        <a href="#features"
+            class="relative group px-10 py-5 bg-black/50 backdrop-blur-sm text-white font-display font-semibold uppercase tracking-widest border border-slate-700 hover:border-neon-purple transition-all flex items-center shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+            <div class="absolute inset-0 bg-alert-red/0 group-hover:bg-alert-red/10 transition-colors"></div>
+            <i class="fas fa-project-diagram mr-3 text-slate-500 group-hover:text-neon-purple transition-colors"></i>
+            Explore Features
+            <div
+                class="absolute right-0 top-0 w-2 h-2 border-t border-r border-white group-hover:border-neon-purple transition-colors m-1">
+            </div>
+            <div
+                class="absolute left-0 bottom-0 w-2 h-2 border-b border-l border-white group-hover:border-neon-purple transition-colors m-1">
+            </div>
+        </a>
+    </div>
+
+    <!-- Tech Specs / Telemetry Footer
+    <div class="absolute bottom-8 left-0 right-0 w-full max-w-5xl mx-auto px-6">
+        <div
+            class="grid grid-cols-2 md:grid-cols-3 gap-4 w-full border-t border-slate-800/80 pt-6 bg-obsidian/40 backdrop-blur-md rounded-t-xl">
+            <div class="text-left font-mono px-4 border-l border-slate-800">
+                <div class="text-[10px] text-slate-500 mb-1 tracking-widest">VISION_ENGINE</div>
+                <div class="text-neon-cyan text-sm font-bold">DEEP_LEARNING <span
+                        class="text-slate-600 font-normal">v1.0</span></div>
+            </div>
+            <div class="text-left font-mono px-4 border-l border-slate-800">
+                <div class="text-[10px] text-slate-500 mb-1 tracking-widest">BACKEND_PROTOCOL</div>
+                <div class="text-neon-purple text-sm font-bold">Flask / Py3</div>
+            </div>
+            <div class="text-left font-mono px-4 border-l border-slate-800">
+                <div class="text-[10px] text-slate-500 mb-1 tracking-widest">RENDER_TARGET</div>
+                <div class="text-alert-red text-sm font-bold">CSS3_HUD</div>
+            </div>
+        </div>
+    </div> -->
+
+    <!-- Scroll Indicator -->
+    <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex flex-col items-center animate-bounce z-20 cursor-pointer hidden md:flex"
+        onclick="document.getElementById('features').scrollIntoView({behavior: 'smooth'})">
+        <i class="fa-solid fa-chevron-down text-neon-cyan/80 text-sm drop-shadow-[0_0_8px_#00f0ff]"></i>
+    </div>
+</div>
+
+<!-- Features & Tools Section -->
+<section id="features" class="max-w-[1600px] mx-auto px-4 md:px-8 py-24 relative z-10 w-full border-t border-slate-800">
+
+    <!-- Background Grid -->
+    <div
+        class="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.02)_1px,transparent_1px)] bg-[length:60px_60px] pointer-events-none -z-10 [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]">
+    </div>
+
+    <!-- ================= TOOLS SECTION ================= -->
+    <div class="text-center mb-16">
+        <h2 class="font-display text-4xl md:text-5xl font-bold uppercase tracking-widest text-white mb-4">
+            Tools & <span
+                class="text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-purple">Technology</span>
+        </h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mb-24">
+
+        <!-- Python -->
+        <div class="hud-border p-6 bg-black/60 group hover:-translate-y-2 transition-all">
+            <i class="fa-brands fa-python text-2xl text-neon-cyan mb-4"></i>
+            <h3 class="font-display text-lg text-white font-bold mb-2">Python & Flask</h3>
+            <p class="text-slate-400 text-sm">
+                Backend system for handling traffic logic and real-time processing. It helps manage data,
+                control signals, and connect all parts of the system smoothly.
+            </p>
+        </div>
+
+        <!-- Grid -->
+        <div class="hud-border p-6 bg-black/60 group hover:-translate-y-2 transition-all">
+            <i class="fa-solid fa-border-all text-2xl text-neon-purple mb-4"></i>
+            <h3 class="font-display text-lg text-white font-bold mb-2">Grid Vision</h3>
+            <p class="text-slate-400 text-sm">
+                Optimized grid-based motion detection as a lightweight alternative to deep learning models.
+                It divides the frame into small blocks to detect movement and estimate traffic easily.
+            </p>
+        </div>
+
+        <!-- Frontend -->
+        <div class="hud-border p-6 bg-black/60 group hover:-translate-y-2 transition-all">
+            <i class="fa-brands fa-html5 text-2xl text-alert-red mb-4"></i>
+            <h3 class="font-display text-lg text-white font-bold mb-2">Frontend UI</h3>
+            <p class="text-slate-400 text-sm">
+                Cyber-style dashboard built using HTML, CSS, and JavaScript. It provides a clean and
+                interactive interface to view traffic data and system status in real time.
+            </p>
+        </div>
+
+        <!-- Chart.js -->
+        <div class="hud-border p-6 bg-black/60 group hover:-translate-y-2 transition-all">
+            <i class="fa-solid fa-chart-line text-2xl text-yellow-400 mb-4"></i>
+            <h3 class="font-display text-lg text-white font-bold mb-2">Chart.js</h3>
+            <p class="text-slate-400 text-sm">
+                Real-time traffic data monitoring and system insights. It helps display graphs and charts
+                to understand vehicle flow, density, and signal performance easily.
+            </p>
+        </div>
+
+    </div>
+
+    <!-- ================= FEATURES SECTION ================= -->
+    <div class="text-center mb-16">
+        <h2 class="font-display text-4xl md:text-5xl font-bold uppercase tracking-widest text-white mb-4">
+            System <span
+                class="text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-purple">Features</span>
+        </h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+
+        <!-- Feature 1 -->
+        <div class="hud-border p-6 bg-black/60 group hover:-translate-y-2 transition-all">
+            <i class="fa-solid fa-traffic-light text-2xl text-emerald-400 mb-4"></i>
+            <h3 class="font-display text-lg text-white font-bold mb-2">Dynamic Signal</h3>
+            <p class="text-slate-400 text-sm">Dynamically allocates green signal duration using real-time vehicle
+                density estimation.</p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="hud-border p-6 bg-black/60 group hover:-translate-y-2 transition-all">
+            <i class="fa-solid fa-truck-medical text-2xl text-alert-red mb-4"></i>
+            <h3 class="font-display text-lg text-white font-bold mb-2">Emergency Priority</h3>
+            <p class="text-slate-400 text-sm">
+                Automatically detects emergency vehicles and overrides normal signal flow to create a priority passage.
+            </p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="hud-border p-6 bg-black/60 group hover:-translate-y-2 transition-all">
+            <i class="fa-solid fa-magnifying-glass-chart text-2xl text-yellow-400 mb-4"></i>
+            <h3 class="font-display text-lg text-white font-bold mb-2">Data Analysis</h3>
+            <p class="text-slate-400 text-sm">
+                Analyzes traffic patterns and generates real-time insights to improve signal efficiency and flow
+                management.
+            </p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="hud-border p-6 bg-black/60 group hover:-translate-y-2 transition-all">
+            <i class="fa-solid fa-forward text-2xl text-neon-cyan mb-4"></i>
+            <h3 class="font-display text-lg text-white font-bold mb-2">Simulation Mode</h3>
+            <p class="text-slate-400 text-sm">
+                Simulates real-world traffic scenarios to test signal behavior and system performance before deployment.
+            </p>
+        </div>
+
+    </div>
+
+</section>
+<!-- Footer -->
+<footer class="w-full border-t border-slate-800 bg-obsidian py-6 mt-12 px-6">
+    <div class="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="font-mono text-[10px] text-slate-500 uppercase tracking-widest text-center md:text-left">
+            &copy; 2026 INTELLIGENT TRAFFIC MANAGEMENT SYSTEM. ALL PROTOCOLS SECURED.
+        </p>
+    </div>
+</footer>
+{% endblock %}

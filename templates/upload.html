@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}UPLINK_CONFIG{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto pt-8 md:pt-16 pb-20 px-4 md:px-0 relative">
+
+    <!-- Background Decorator -->
+    <div
+        class="absolute top-1/4 right-0 w-[400px] h-[400px] bg-neon-purple/5 rounded-full blur-[100px] pointer-events-none">
+    </div>
+
+    <!-- Header Section -->
+    <div
+        class="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-neon-purple/30 pb-6 mb-10 relative z-10">
+        <div>
+            <h1 class="font-display text-4xl md:text-5xl font-bold text-white uppercase tracking-widest mb-2"><i
+                    class="fa-solid fa-satellite-dish text-neon-purple mr-4 drop-shadow-[0_0_10px_#8a2be2]"></i>Upload
+                Video Stream</h1>
+            <p class="font-mono text-xs md:text-sm text-slate-400 flex items-center">
+                <i class="fa-solid fa-terminal text-[10px] mr-2 text-neon-cyan"></i> > WAITING FOR TRAFFIC CAMERA FEEDS
+                SECURE TRANSFER...
+            </p>
+        </div>
+        <!-- <div
+            class="mt-4 md:mt-0 font-mono text-xs text-neon-cyan border border-neon-cyan/20 bg-neon-cyan/10 px-3 py-1.5 shadow-[0_0_10px_rgba(0,240,255,0.1)]">
+            SECURE_CHANNEL_ESTABLISHED
+        </div> -->
+    </div>
+
+    <!-- Flash Messages (Optional backend fallback) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="mb-4">
+        {% for category, message in messages %}
+        <div
+            class="p-3 mb-2 border {% if category == 'error' %}border-alert-red/50 bg-alert-red/10 text-alert-red{% else %}border-neon-cyan/50 bg-neon-cyan/10 text-neon-cyan{% endif %} font-mono text-sm uppercase tracking-widest shadow-[0_0_10px_currentColor]">
+            > {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Form -->
+    <form action="/dashboard" method="POST" enctype="multipart/form-data" id="uploadForm"
+        class="space-y-8 relative z-10">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            {% for lane in range(1, 5) %}
+            <div
+                class="hud-border p-5 lg:p-6 group focus-within:border-neon-purple focus-within:shadow-[0_0_20px_rgba(138,43,226,0.2)] transition-all bg-black/60 relative overflow-hidden">
+                <!-- Node Header -->
+                <div class="flex justify-between items-center mb-5 border-b border-slate-800 pb-3">
+                    <span
+                        class="font-display font-bold text-neon-cyan tracking-widest uppercase text-xl flex items-center">
+                        <span
+                            class="w-1.5 h-1.5 rounded-full bg-neon-cyan inline-block mr-2 group-focus-within:animate-ping"></span>
+                        Lane [0{{lane}}]
+                    </span>
+                </div>
+
+                <!-- Drop Zone / Input -->
+                <div
+                    class="relative bg-black border-[1.5px] border-dashed border-slate-700 group-hover:border-neon-purple/70 transition-colors p-4 flex flex-col items-center justify-center h-40 overflow-hidden group-focus-within:border-transparent group-focus-within:bg-neon-purple/5">
+
+                    <!-- Scanner effect on hover/focus -->
+                    <div
+                        class="absolute top-0 left-0 w-full h-[50px] bg-gradient-to-b from-transparent to-neon-purple/20 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:animate-[scan_2s_linear_infinite] group-focus-within:animate-[scan_1.5s_linear_infinite] pointer-events-none">
+                    </div>
+                    <div
+                        class="absolute top-0 left-0 w-full h-[1px] bg-neon-purple opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:animate-[scan_2s_linear_infinite] group-focus-within:animate-[scan_1.5s_linear_infinite] shadow-[0_0_10px_#8a2be2] pointer-events-none">
+                    </div>
+
+                    <div
+                        class="relative z-10 flex flex-col items-center group-focus-within:-translate-y-2 transition-transform">
+                        <div
+                            class="w-12 h-12 rounded-full border border-slate-700 bg-slate-900 flex items-center justify-center mb-3 group-hover:border-neon-purple group-hover:shadow-[0_0_15px_#8a2be2] transition-colors">
+                            <i
+                                class="fa-solid fa-cloud-arrow-up text-xl text-slate-500 group-hover:text-neon-purple transition-colors"></i>
+                        </div>
+                        <span
+                            class="font-display uppercase tracking-widest text-slate-400 group-hover:text-white transition-colors text-sm font-semibold text-center">
+                            Select Video Stream File
+                        </span>
+                        <span class="font-mono text-[9px] text-slate-600 mt-1 uppercase text-center max-w-[80%]">
+                            Supported Formats: MP4 <br> Max Size: 500MB
+                        </span>
+                    </div>
+
+                    <!-- The actual invisible input filling the zone -->
+                    <input type="file" name="video_{{lane}}" accept="video/*" title="Upload Video for Node {{lane}}"
+                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50 text-[0px] file-input-node"
+                        required />
+
+                    <!-- Corner Brackets in dropzone -->
+                    <div
+                        class="absolute top-1 left-1 w-3 h-3 border-t border-l border-slate-600 group-focus-within:border-neon-purple pointer-events-none transition-colors">
+                    </div>
+                    <div
+                        class="absolute top-1 right-1 w-3 h-3 border-t border-r border-slate-600 group-focus-within:border-neon-purple pointer-events-none transition-colors">
+                    </div>
+                    <div
+                        class="absolute bottom-1 left-1 w-3 h-3 border-b border-l border-slate-600 group-focus-within:border-neon-purple pointer-events-none transition-colors">
+                    </div>
+                    <div
+                        class="absolute bottom-1 right-1 w-3 h-3 border-b border-r border-slate-600 group-focus-within:border-neon-purple pointer-events-none transition-colors">
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+        </div>
+
+        <!-- Action Bar -->
+        <div
+            class="mt-12 pt-8 border-t border-slate-800/80 hud-border p-6 bg-obsidian flex justify-center items-center">
+            <!-- <div class="font-mono text-[10px] text-slate-500 text-left border-l-[3px] border-alert-red pl-3">
+                <span class="text-alert-red mb-1 block uppercase">Security Notice:</span>
+                All uploaded video streams are processed entirely locally on the <br class="hidden md:block">edge
+                device. Encrypted memory allocation will be initiated.
+            </div> -->
+
+            <button type="submit"
+                class="cyber-button py-4 px-10 text-xl w-full md:w-auto flex-shrink-0 shadow-[0_0_15px_rgba(0,240,255,0.2)]">
+                <i class="fa-solid fa-power-off mr-3"></i> INITIATE PROCESSING <i
+                    class="fa-solid fa-angles-right ml-3 text-sm opacity-70"></i>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const inputs = document.querySelectorAll('.file-input-node');
+        const form = document.getElementById('uploadForm');
+
+        inputs.forEach(input => {
+            input.addEventListener('change', (e) => {
+                const container = e.target.closest('.relative').querySelector('.font-display.text-slate-400, .font-display.text-neon-cyan');
+                if (e.target.files.length > 0) {
+                    container.textContent = e.target.files[0].name;
+                    container.classList.remove('text-slate-400');
+                    container.classList.add('text-neon-cyan');
+                    container.classList.add('truncate');
+                    container.classList.add('px-4');
+                    container.classList.add('w-full');
+                } else {
+                    container.textContent = 'Select Video Stream File';
+                    container.classList.add('text-slate-400');
+                    container.classList.remove('text-neon-cyan', 'truncate', 'px-4', 'w-full');
+                }
+            });
+        });
+
+        form.addEventListener('submit', (e) => {
+            let allSelected = true;
+            inputs.forEach(input => {
+                if (input.files.length === 0) {
+                    allSelected = false;
+                    const container = input.closest('.hud-border');
+                    container.classList.add('border-alert-red');
+                    container.classList.add('shadow-[0_0_20px_rgba(255,0,60,0.3)]');
+                    setTimeout(() => {
+                        container.classList.remove('border-alert-red');
+                        container.classList.remove('shadow-[0_0_20px_rgba(255,0,60,0.3)]');
+                    }, 2000);
+                }
+            });
+            if (!allSelected) {
+                e.preventDefault();
+                alert('SYSTEM HALT: All 4 uplink nodes require active video streams before proceeding to Tactical Grid.');
+            }
+        });
+    });
+</script>
+{% endblock %}

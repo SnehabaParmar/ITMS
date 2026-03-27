@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}SIMSYS_CORE{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-[calc(100vh-theme(spacing.20))] md:min-h-full space-y-4 max-w-[1600px] mx-auto pb-6 relative z-10 w-full overflow-hidden">
+    <!-- Top Bar -->
+    <div class="hud-border p-3 md:p-4 flex flex-col md:flex-row justify-between items-start md:items-center bg-obsidian/80 relative z-20 mx-4 mt-4">
+        <div class="flex flex-col mb-3 md:mb-0">
+            <h1 class="font-display text-2xl md:text-3xl font-bold text-emerald-400 tracking-widest uppercase">
+                <i class="fa-solid fa-gamepad mr-3 opacity-80"></i>Live Simulation
+            </h1>
+            <span class="font-mono text-[10px] md:text-xs text-neon-cyan mt-1 flex items-center">
+                <span class="w-1.5 h-1.5 bg-neon-cyan inline-block mr-2 animate-pulse shadow-[0_0_5px_#00f0ff]"></span>
+                > NEURAL_FUZZY_LOGIC_ACTIVE
+            </span>
+        </div>
+        
+        <!-- Controls -->
+        <div class="flex flex-wrap md:flex-row items-end md:items-center gap-2 md:gap-3 font-mono text-xs">
+            <div class="flex gap-1 border border-neon-cyan p-1">
+                <span class="text-neon-cyan text-[10px] uppercase flex items-center px-1">Traffic:</span>
+                <button id="btn-spawn-north" class="cyber-button px-2 py-1 text-neon-cyan text-[10px] uppercase">+N</button>
+                <button id="btn-spawn-east" class="cyber-button px-2 py-1 text-neon-cyan text-[10px] uppercase">+E</button>
+                <button id="btn-spawn-south" class="cyber-button px-2 py-1 text-neon-cyan text-[10px] uppercase">+S</button>
+                <button id="btn-spawn-west" class="cyber-button px-2 py-1 text-neon-cyan text-[10px] uppercase">+W</button>
+            </div>
+            
+            <div class="flex gap-1 border border-alert-red p-1 bg-alert-red/5">
+                <span class="text-alert-red text-[10px] uppercase flex items-center px-1"><i class="fa-solid fa-truck-medical mr-1"></i> Emergency:</span>
+                <button id="btn-em-n" class="cyber-button px-2 py-1 text-alert-red hover:bg-alert-red hover:text-white text-[10px] uppercase transition-all duration-300">N</button>
+                <button id="btn-em-e" class="cyber-button px-2 py-1 text-alert-red hover:bg-alert-red hover:text-white text-[10px] uppercase transition-all duration-300">E</button>
+                <button id="btn-em-s" class="cyber-button px-2 py-1 text-alert-red hover:bg-alert-red hover:text-white text-[10px] uppercase transition-all duration-300">S</button>
+                <button id="btn-em-w" class="cyber-button px-2 py-1 text-alert-red hover:bg-alert-red hover:text-white text-[10px] uppercase transition-all duration-300">W</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 flex-1 min-h-0 relative z-10 px-4">
+        <!-- Telemetry Panel -->
+        <div class="hud-border bg-black/80 flex flex-col p-4 w-full h-full lg:col-span-1 overflow-hidden relative">
+            <div class="flex items-center mb-4 border-b border-slate-700/80 pb-2">
+                <i class="fa-solid fa-server text-neon-purple mr-2"></i>
+                <h2 class="font-display font-bold uppercase tracking-widest text-slate-300">Telemetry Info</h2>
+            </div>
+            
+            <div id="telemetry-lanes" class="space-y-4">
+                <!-- NORTH -->
+                <div class="flex flex-col text-xs font-mono">
+                    <span class="text-slate-400 mb-1">NORTH APPROACH:</span>
+                    <div class="flex flex-col w-full bg-slate-900/50 p-2 border border-slate-800 relative">
+                        <!-- Glow highlight when active -->
+                        <div id="active-bg-n" class="absolute inset-0 bg-emerald-400/10 hidden animate-pulse"></div>
+                        <div class="flex justify-between w-full mb-1 relative z-10">
+                            <span id="stat-n-sig" class="font-bold text-alert-red">RED</span>
+                            <span>Veh: <span id="stat-n-count" class="text-neon-cyan font-bold">0</span></span>
+                            <span>Wait <span id="stat-n-wait" class="text-yellow-400 font-bold">0s</span></span>
+                        </div>
+                        <div class="w-full h-1 bg-slate-900 mt-1 relative z-10">
+                            <div id="bar-n" class="h-full bg-neon-cyan transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- EAST -->
+                <div class="flex flex-col text-xs font-mono">
+                    <span class="text-slate-400 mb-1">EAST APPROACH:</span>
+                    <div class="flex flex-col w-full bg-slate-900/50 p-2 border border-slate-800 relative">
+                        <div id="active-bg-e" class="absolute inset-0 bg-emerald-400/10 hidden animate-pulse"></div>
+                        <div class="flex justify-between w-full mb-1 relative z-10">
+                            <span id="stat-e-sig" class="font-bold text-alert-red">RED</span>
+                            <span>Veh: <span id="stat-e-count" class="text-neon-cyan font-bold">0</span></span>
+                            <span>Wait <span id="stat-e-wait" class="text-yellow-400 font-bold">0s</span></span>
+                        </div>
+                        <div class="w-full h-1 bg-slate-900 mt-1 relative z-10">
+                            <div id="bar-e" class="h-full bg-neon-cyan transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- SOUTH -->
+                <div class="flex flex-col text-xs font-mono">
+                    <span class="text-slate-400 mb-1">SOUTH APPROACH:</span>
+                    <div class="flex flex-col w-full bg-slate-900/50 p-2 border border-slate-800 relative">
+                        <div id="active-bg-s" class="absolute inset-0 bg-emerald-400/10 hidden animate-pulse"></div>
+                        <div class="flex justify-between w-full mb-1 relative z-10">
+                            <span id="stat-s-sig" class="font-bold text-alert-red">RED</span>
+                            <span>Veh: <span id="stat-s-count" class="text-neon-cyan font-bold">0</span></span>
+                            <span>Wait <span id="stat-s-wait" class="text-yellow-400 font-bold">0s</span></span>
+                        </div>
+                        <div class="w-full h-1 bg-slate-900 mt-1 relative z-10">
+                            <div id="bar-s" class="h-full bg-neon-cyan transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- WEST -->
+                <div class="flex flex-col text-xs font-mono">
+                    <span class="text-slate-400 mb-1">WEST APPROACH:</span>
+                    <div class="flex flex-col w-full bg-slate-900/50 p-2 border border-slate-800 relative">
+                        <div id="active-bg-w" class="absolute inset-0 bg-emerald-400/10 hidden animate-pulse"></div>
+                        <div class="flex justify-between w-full mb-1 relative z-10">
+                            <span id="stat-w-sig" class="font-bold text-alert-red">RED</span>
+                            <span>Veh: <span id="stat-w-count" class="text-neon-cyan font-bold">0</span></span>
+                            <span>Wait <span id="stat-w-wait" class="text-yellow-400 font-bold">0s</span></span>
+                        </div>
+                        <div class="w-full h-1 bg-slate-900 mt-1 relative z-10">
+                            <div id="bar-w" class="h-full bg-neon-cyan transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 border-t border-slate-700/80 pt-4 font-mono text-[10px] space-y-2 text-slate-400">
+                <div class="flex justify-between">
+                    <span>SYS_PHASE:</span>
+                    <span id="sys-phase" class="text-yellow-400 font-bold">01_NORTH</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>TIMER_REMAINING:</span>
+                    <span id="sys-timer" class="text-emerald-400 font-bold">0s</span>
+                </div>
+                <div class="mt-4 bg-slate-900/50 p-2 border border-slate-800">
+                    <p class="text-neon-purple mb-1">FUZZY LOGIC REASONING:</p>
+                    <p id="fuzzy-reasoning" class="text-[9px] leading-tight text-white border-l-2 border-neon-cyan pl-2">Awaiting initial data feed to calculate ruleset optimizations.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Canvas Viewer -->
+        <div class="hud-border bg-[#050505] flex items-center justify-center p-0 lg:col-span-3 h-[500px] lg:h-full relative overflow-hidden" id="canvas-container">
+            <!-- Grid Background Overlay -->
+            <div class="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.05)_1px,transparent_1px)] bg-[length:40px_40px] pointer-events-none z-0"></div>
+            
+            <canvas id="sim-canvas" width="800" height="600" class="block w-full h-full object-contain relative z-10 box-border"></canvas>
+            
+            <!-- Warning Effect -->
+            <div id="emergency-overlay" class="absolute inset-0 border-[4px] border-alert-red/50 pointer-events-none z-20 hidden animate-pulse flex flex-col items-center justify-start pt-4 bg-alert-red/10">
+                <div class="font-display tracking-widest font-bold text-2xl text-alert-red drop-shadow-[0_0_10px_#ff003c] mix-blend-screen bg-black/50 px-4 py-1 border border-alert-red">EMERGENCY PROTOCOL OVERRIDE</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='simulation.js') }}?v=2.4"></script>
+{% endblock %}

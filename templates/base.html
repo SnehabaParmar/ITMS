@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ITMS - {% block title %}Neo-HUD System{% endblock %}</title>
+    <!-- Tailwind CSS (via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts: Rajdhani & Inter -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        // System reset on refresh
+        let isReload = false;
+        if (window.performance && performance.getEntriesByType && performance.getEntriesByType("navigation").length > 0) {
+            isReload = (performance.getEntriesByType("navigation")[0].type === "reload");
+        } else if (window.performance && performance.navigation && performance.navigation.type === 1) {
+            isReload = true;
+        }
+
+        if (isReload) {
+            if (window.location.pathname === '/' || window.location.pathname === '/home') {
+                fetch('/reset_api', { method: 'POST' });
+            } else {
+                document.documentElement.style.display = 'none';
+                window.location.replace('/reset');
+            }
+        }
+    </script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Rajdhani', 'sans-serif'],
+                    },
+                    colors: {
+                        obsidian: '#050505',
+                        panel: '#0a0a0c',
+                        'neon-cyan': '#00f0ff',
+                        'neon-purple': '#8a2be2',
+                        'alert-red': '#ff003c',
+                    },
+                    animation: {
+                        'scan': 'scan 3s linear infinite',
+                        'glitch': 'glitch 1s linear infinite',
+                        'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        scan: {
+                            '0%': { transform: 'translateY(-100%)' },
+                            '100%': { transform: 'translateY(100%)' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { boxShadow: '0 0 10px #00f0ff, inset 0 0 10px #00f0ff' },
+                            '50%': { boxShadow: '0 0 20px #00f0ff, inset 0 0 20px #00f0ff' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #050505;
+            color: #e2e8f0;
+            background-image:
+                linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            overflow-x: hidden;
+        }
+
+        .hud-border {
+            position: relative;
+            background: rgba(10, 10, 12, 0.8);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .hud-border::before,
+        .hud-border::after {
+            content: '';
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border: 2px solid #00f0ff;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .hud-border::before {
+            top: -1px;
+            left: -1px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .hud-border::after {
+            bottom: -1px;
+            right: -1px;
+            border-left: none;
+            border-top: none;
+        }
+
+        .hud-border:hover::before,
+        .hud-border:hover::after {
+            width: 30px;
+            height: 30px;
+            border-color: #8a2be2;
+        }
+
+        .cyber-button {
+            position: relative;
+            background: transparent;
+            color: #00f0ff;
+            border: 1px solid #00f0ff;
+            text-transform: uppercase;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            letter-spacing: 2px;
+            overflow: hidden;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cyber-button:hover {
+            background: #00f0ff;
+            color: #050505;
+            box-shadow: 0 0 15px #00f0ff;
+        }
+
+        .cyber-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transition: 0.5s;
+        }
+
+        .cyber-button:hover::before {
+            left: 100%;
+        }
+
+        .glitch-text {
+            text-shadow: 2px 0 #ff003c, -2px 0 #00f0ff;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #050505;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #00f0ff;
+            border-radius: 2px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8a2be2;
+        }
+
+        /* Sidebar Toggle Styles */
+        @media (min-width: 768px) {
+            #app-sidebar.sidebar-toggled {
+                width: 4rem !important;
+            }
+
+            #app-sidebar.sidebar-toggled .sidebar-text {
+                display: none !important;
+            }
+
+            #app-sidebar.sidebar-toggled .sidebar-header {
+                justify-content: center !important;
+                padding: 1rem !important;
+            }
+        }
+
+        @media (max-width: 767px) {
+            #app-sidebar.sidebar-toggled {
+                width: 16rem !important;
+                position: absolute;
+                background: #050505;
+                height: 100%;
+                box-shadow: 10px 0 25px rgba(0, 0, 0, 0.8);
+            }
+
+            #app-sidebar.sidebar-toggled .sidebar-text {
+                display: block !important;
+            }
+
+            #app-sidebar.sidebar-toggled .sidebar-header {
+                justify-content: flex-start !important;
+                padding-left: 1.5rem !important;
+                padding-right: 1.5rem !important;
+            }
+        }
+
+        /* Prevent transition flash on load by hiding until script runs */
+        body:not(.loaded) #app-sidebar {
+            transition: none !important;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+
+<body class="antialiased flex h-screen overflow-hidden selection:bg-neon-cyan selection:text-black">
+
+    <!-- Navigation HUD Sidebar -->
+    <aside id="app-sidebar"
+        class="w-16 md:w-64 flex-shrink-0 h-full hud-border border-r border-t-0 border-b-0 border-l-0 flex flex-col z-[60] transition-all duration-300">
+        <div class="sidebar-header p-4 md:p-6 flex items-center justify-center md:justify-start border-b border-neon-cyan/20 cursor-pointer hover:bg-neon-cyan/5 transition-colors"
+            onclick="toggleSidebar()">
+            <div
+                class="w-8 h-8 md:w-10 md:h-10 border border-neon-cyan flex items-center justify-center shadow-[0_0_10px_#00f0ff] relative flex-shrink-0">
+                <div class="absolute inset-0 animate-ping opacity-20 bg-neon-cyan"></div>
+                <i class="fa-solid fa-crosshairs text-neon-cyan text-sm md:text-base"></i>
+            </div>
+            <span
+                class="sidebar-text hidden md:block ml-4 font-display font-bold text-2xl tracking-widest text-white glitch-text">ITMS<span
+                    class="text-neon-cyan">_SYS</span></span>
+        </div>
+
+        <nav class="flex-1 flex flex-col gap-2 p-2 md:p-4 mt-4">
+            <a href="/"
+                class="group flex items-center p-3 rounded-sm hover:bg-neon-cyan/10 transition-colors border-l-2 border-transparent hover:border-neon-cyan relative">
+                <i
+                    class="fa-solid fa-home text-slate-500 group-hover:text-neon-cyan transition-colors text-lg md:w-8 text-center flex-shrink-0"></i>
+                <span
+                    class="sidebar-text hidden md:block ml-3 font-display uppercase tracking-widest text-sm text-slate-400 group-hover:text-neon-cyan transition-colors truncate">Home
+                </span>
+            </a>
+            <a href="/upload"
+                class="group flex items-center p-3 rounded-sm hover:bg-neon-purple/10 transition-colors border-l-2 border-transparent hover:border-neon-purple relative">
+                <i
+                    class="fa-solid fa-satellite-dish text-slate-500 group-hover:text-neon-purple transition-colors text-lg md:w-8 text-center flex-shrink-0"></i>
+                <span
+                    class="sidebar-text hidden md:block ml-3 font-display uppercase tracking-widest text-sm text-slate-400 group-hover:text-neon-purple transition-colors truncate">Upload
+                </span>
+            </a>
+            <a href="/dashboard"
+                class="group flex items-center p-3 rounded-sm hover:bg-alert-red/10 transition-colors border-l-2 border-transparent hover:border-alert-red relative">
+                <i
+                    class="fa-solid fa-border-all text-slate-500 group-hover:text-alert-red transition-colors text-lg md:w-8 text-center flex-shrink-0"></i>
+                <span
+                    class="sidebar-text hidden md:block ml-3 font-display uppercase tracking-widest text-sm text-slate-400 group-hover:text-alert-red transition-colors truncate">Dashboard
+                </span>
+                <span
+                    class="absolute top-3 md:top-3 right-3 md:right-3 w-2 h-2 rounded-full bg-alert-red shadow-[0_0_8px_#ff003c] animate-pulse"></span>
+            </a>
+            <a href="/simulation"
+                class="group flex items-center p-3 rounded-sm hover:bg-emerald-400/10 transition-colors border-l-2 border-transparent hover:border-emerald-400 relative">
+                <i
+                    class="fa-solid fa-gamepad text-slate-500 group-hover:text-emerald-400 transition-colors text-lg md:w-8 text-center flex-shrink-0"></i>
+                <span
+                    class="sidebar-text hidden md:block ml-3 font-display uppercase tracking-widest text-sm text-slate-400 group-hover:text-emerald-400 transition-colors truncate">Simulation
+                </span>
+            </a>
+        </nav>
+
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 h-full overflow-y-auto relative">
+        <!-- CRT Overlay purely aesthetic -->
+        <div
+            class="pointer-events-none absolute inset-0 z-50 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px] opacity-20">
+        </div>
+
+        <div class="h-full relative z-10 w-full bg-gradient-to-br from-obsidian via-obsidian to-slate-950">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    {% block scripts %}{% endblock %}
+    <script>
+        // Initialize sidebar state from localStorage before transition starts
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebarState = localStorage.getItem('sidebarState');
+            if (sidebarState === 'toggled') {
+                document.getElementById('app-sidebar').classList.add('sidebar-toggled');
+            }
+            // Add loaded class to enable transitions
+            setTimeout(() => {
+                document.body.classList.add('loaded');
+            }, 50);
+        });
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('app-sidebar');
+            sidebar.classList.toggle('sidebar-toggled');
+
+            // Save state
+            if (sidebar.classList.contains('sidebar-toggled')) {
+                localStorage.setItem('sidebarState', 'toggled');
+            } else {
+                localStorage.setItem('sidebarState', 'default');
+            }
+        }
+    </script>
+</body>
+
+</html>
