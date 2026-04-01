@@ -34,7 +34,66 @@ def generate_frames(lane_id):
     cap = cv2.VideoCapture(video_path)
     processor = lane_processors[lane_id]
     
+    import random
+    red_state = 'normal'
+    red_counter = 0
+    last_out_frame = None
+    prev_is_green = True
+    
     while True:
+        is_green = (signal_controller.signals[lane_id] == 'green')
+        
+        # Force a normal frame if signal just changed to red (updates visual lines immediately)
+        if prev_is_green and not is_green:
+            red_state = 'normal'
+            red_counter = 1
+            
+        prev_is_green = is_green
+        
+        # --- RED SIGNAL LOGIC ---
+        if not is_green:
+            if red_counter <= 0:
+                # Decide next action to simulate stopping/slow motion
+                rand_val = random.random()
+                if rand_val < 0.7:
+                    red_state = 'freeze'
+                    red_counter = random.randint(10, 30) # 0.4s to 1.2s freeze
+                elif rand_val < 0.9:
+                    red_state = 'skip'
+                    red_counter = random.randint(2, 5) # skip 2 to 5 frames
+                else:
+                    red_state = 'normal'
+                    red_counter = random.randint(2, 5) # play normally
+
+            if red_state == 'freeze' and red_counter > 0:
+                red_counter -= 1
+                if last_out_frame is not None:
+                    # 🔹 1. Frame Freezing
+                    # Temporarily display the same frame multiple times
+                    ret, buffer = cv2.imencode('.jpg', last_out_frame)
+                    frame_bytes = buffer.tobytes()
+                    yield (b'--frame\r\n'
+                           b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+                    time.sleep(0.04)
+                    continue
+            
+            if red_state == 'skip' and red_counter > 0:
+                # 🔹 2. Frame Skipping
+                # Read frames and discard them, creating a jerky slow-motion jump
+                for _ in range(red_counter):
+                    success, _ = cap.read()
+                    if not success:
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                red_counter = 0
+                red_state = 'normal'
+                
+            if red_state == 'normal' and red_counter > 0:
+                red_counter -= 1
+        else:
+            red_state = 'normal'
+            red_counter = 0
+        # ------------------------
+
         success, frame = cap.read()
         if not success:
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
@@ -44,11 +103,15 @@ def generate_frames(lane_id):
         frame = cv2.resize(frame, (640, 360))
             
         # Send frame into the CV pipeline
-        is_green = (signal_controller.signals[lane_id] == 'green')
         out_frame, avg_density = processor.process_frame(frame, is_green)
+        last_out_frame = out_frame
 
         # IMPORTANT FIX
         signal_controller.update_density(lane_id, processor.current_present)
+        
+        # EMERGENCY OVERRIDE LOGIC
+        if processor.emergency_active:
+            signal_controller.trigger_emergency(lane_id)
         
         # Serialize to JPEG
         ret, buffer = cv2.imencode('.jpg', out_frame)
@@ -119,6 +182,7 @@ def api_state():
     state = signal_controller.get_state()
     state['passing_counts'] = [p.crossing_count for p in lane_processors]
     state['present_counts'] = [getattr(p, 'current_present', 0) for p in lane_processors]
+    state['emergency_active'] = [getattr(p, 'emergency_active', False) for p in lane_processors]
     return jsonify(state)
 
 @app.route('/reset')

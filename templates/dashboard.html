@@ -142,7 +142,7 @@
                         </div>
                         <div class="flex justify-between items-center text-slate-400">
                             <span>PRIORITY_DETECTION:</span>
-                            <span
+                            <span id="priority-{{loop.index0}}"
                                 class="{% if lane.amb == 'YES' %}text-alert-red animate-pulse border border-alert-red/30 px-1{% else %}text-slate-500 truncate{% endif %} font-bold">
                                 [{% if lane.amb == 'YES' %}AMBULANCE_DETECTED{% else %}NEGATIVE{% endif %}]
                             </span>
@@ -173,11 +173,10 @@
             </div>
 
             <!-- Warning Glitch Effect Overlay -->
-            {% if lane.amb == 'YES' %}
-            <div
-                class="absolute inset-0 border-2 border-alert-red/0 group-hover:border-alert-red/10 animate-pulse pointer-events-none z-30 mix-blend-screen">
+            <div id="glitch-{{loop.index0}}"
+                class="absolute inset-0 border-2 border-alert-red/0 group-hover:border-alert-red/10 animate-pulse pointer-events-none z-30 mix-blend-screen"
+                style="{% if lane.amb != 'YES' %}display: none;{% endif %}">
             </div>
-            {% endif %}
 
         </div>
         {% endfor %}

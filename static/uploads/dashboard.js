@@ -73,11 +73,31 @@ document.addEventListener("DOMContentLoaded", () => {
                     const timeContainer = document.getElementById(`time-container-${i}`);
                     const timeVal = document.getElementById(`time-${i}`);
                     if (timeContainer && timeVal) {
-                        if (signal === 'green') {
+                        if (signal === 'green' || signal === 'yellow') {
                             timeContainer.style.display = 'flex';
                             timeVal.textContent = `${remaining_time}s`;
                         } else {
                             timeContainer.style.display = 'none';
+                        }
+                    }
+                    
+                    const priorityElem = document.getElementById(`priority-${i}`);
+                    if (priorityElem && data.emergency_active) {
+                        if (data.emergency_active[i]) {
+                            priorityElem.textContent = "[AMBULANCE_DETECTED]";
+                            priorityElem.className = "text-alert-red animate-pulse border border-alert-red/30 px-1 font-bold";
+                        } else {
+                            priorityElem.textContent = "[NEGATIVE]";
+                            priorityElem.className = "text-slate-500 truncate font-bold";
+                        }
+                    }
+
+                    const glitchElem = document.getElementById(`glitch-${i}`);
+                    if (glitchElem && data.emergency_active) {
+                        if (data.emergency_active[i]) {
+                            glitchElem.style.display = 'block';
+                        } else {
+                            glitchElem.style.display = 'none';
                         }
                     }
 

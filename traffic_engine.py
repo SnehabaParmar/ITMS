@@ -84,6 +84,11 @@ class SignalController:
         self.last_switch_time = time.time()
         self.ga_best_multiplier = 2.5  # initial value
         
+        self.emergency_lane = None
+        self.emergency_clearing = False
+        self.emergency_clear_start_time = 0
+        self.emergency_last_trigger = 0
+        
     def update_density(self, lane_id, count):
         self.lane_densities[lane_id] = count
 
@@ -116,10 +121,33 @@ class SignalController:
                 
     def update(self):
         now = time.time()
+        
+        # Evaluate emergency release
+        if self.emergency_lane is not None:
+            if now - self.emergency_last_trigger > 0.5:
+                if not self.emergency_clearing:
+                    self.emergency_clearing = True
+                    self.emergency_clear_start_time = now
+                    self.timings[self.emergency_lane] = 5
+                    self.last_switch_time = now 
+            else:
+                self.emergency_clearing = False
+                
         elapsed = now - self.last_switch_time
         allocated = self.timings[self.current_lane]
         
+        # Yellow logic
+        if not (self.emergency_lane is not None and not self.emergency_clearing):
+            if int(allocated - elapsed) <= 3:
+                if self.signals[self.current_lane] == 'green':
+                    self.signals[self.current_lane] = 'yellow'
+                    
+        # Normal Switching logic
         if elapsed >= allocated:
+            if self.emergency_lane is not None and self.emergency_clearing:
+                self.emergency_lane = None
+                self.emergency_clearing = False
+                
             self.current_lane = (self.current_lane + 1) % 4
             self.last_switch_time = now
             if self.current_lane == 0:
@@ -130,13 +158,37 @@ class SignalController:
 
     def get_state(self):
         now = time.time()
-        remaining = max(0, int(self.timings[self.current_lane] - (now - self.last_switch_time)))
+        
+        if self.emergency_lane is not None and not self.emergency_clearing:
+            remaining = 0
+        elif self.emergency_lane is not None and self.emergency_clearing:
+            remaining = max(0, int(5.0 - (now - self.emergency_clear_start_time)))
+        else:
+            remaining = max(0, int(self.timings[self.current_lane] - (now - self.last_switch_time)))
+            
         return {
             'signals': self.signals,
             'remaining_time': remaining,
             'densities': self.lane_densities,
             'timings': self.timings
         }
+
+    def trigger_emergency(self, lane_id):
+        """Forces the specified lane to turn Green immediately and stay green."""
+        self.emergency_last_trigger = time.time()
+        
+        # Override only if it's hitting a completely new emergency, or restoring from clearing
+        if self.emergency_lane != lane_id or self.emergency_clearing:
+            self.emergency_lane = lane_id
+            self.emergency_clearing = False
+            self.signals = ['red'] * 4
+            self.signals[lane_id] = 'green'
+            self.current_lane = lane_id
+            
+            # Unlimited allocation until it passes
+            self.timings[lane_id] = 999 
+            self.last_switch_time = time.time() 
+
     def genetic_optimize(self):
         # Simple GA to optimize multiplier
         population = np.random.uniform(1.5, 4.0, 10)
@@ -189,6 +241,8 @@ class LaneProcessor:
         self.TOP_LINE_Y = None
         self.CLUSTER_THRESHOLD = self.GRID_SIZE * 3 
         self.current_present = 0
+        self.emergency_active = False
+        self.emergency_linger = 0
         
     def process_frame(self, frame, is_green):
         gray_curr = get_gray(frame)
@@ -246,20 +300,76 @@ class LaneProcessor:
         centroids = []
         
         # 5. Process Clusters & Tracking Prep
+        has_emergency_this_frame = False
+        
         for cluster in current_frame_clusters:
             xs = [c[0] for c in cluster]
             ys = [c[1] for c in cluster]
             min_x, min_y = min(xs), min(ys)
             max_x, max_y = max(xs), max(ys)
             
-            for (gx, gy) in cluster:
-                cv2.rectangle(out_frame, (gx, gy), (gx+self.GRID_SIZE, gy+self.GRID_SIZE), (128, 128, 128), 1)
+            # --- EMERGENCY DETECT VISUAL HEURISTICS ---
+            width = (max_x - min_x) + self.GRID_SIZE
+            height = (max_y - min_y) + self.GRID_SIZE
             
-            cv2.rectangle(out_frame, (min_x, min_y), (max_x+self.GRID_SIZE, max_y+self.GRID_SIZE), (0, 255, 0), 2)
+            # 1. Large size check (lowered thresholds to detect further back)
+            is_large = width > 40 and height > 40
+            
+            if is_large:
+                # Extract original frame slice corresponding to the cluster bbox
+                fy1, fy2 = max(0, min_y), min(frame.shape[0], max_y + self.GRID_SIZE)
+                fx1, fx2 = max(0, min_x), min(frame.shape[1], max_x + self.GRID_SIZE)
+                roi = frame[fy1:fy2, fx1:fx2]
+                
+                if roi.size > 0:
+                    # 2. White color check (need more solid white body to avoid false positives)
+                    white_mask = cv2.inRange(roi, (180, 180, 180), (255, 255, 255))
+                    white_ratio = cv2.countNonZero(white_mask) / (roi.shape[0] * roi.shape[1] + 1e-5)
+                    is_white = white_ratio > 0.12 
+                    
+                    if is_white:
+                        # 3. Flashing red/blue light check
+                        # Crop to top 50% where the lightbar is located. This ignores side-door logos!
+                        top_h = max(5, int(roi.shape[0] * 0.5))
+                        roi_top = roi[:top_h, :]
+                        
+                        hsv = cv2.cvtColor(roi_top, cv2.COLOR_BGR2HSV)
+                        
+                        # Look for HIGH saturation (intense color) and HIGH value (bright LED lights)
+                        # OpenCV HSV ranges: H: 0-179, S: 0-255, V: 0-255
+                        mask_red1 = cv2.inRange(hsv, (0, 100, 210), (10, 255, 255))
+                        mask_red2 = cv2.inRange(hsv, (170, 100, 210), (180, 255, 255))
+                        red_mask = cv2.bitwise_or(mask_red1, mask_red2)
+                        
+                        blue_mask = cv2.inRange(hsv, (100, 100, 210), (130, 255, 255))
+                        
+                        red_pixels = cv2.countNonZero(red_mask)
+                        blue_pixels = cv2.countNonZero(blue_mask)
+                        
+                        # Requires at least a solid cluster of deeply bright colored pixels
+                        if red_pixels > 12 or blue_pixels > 12:
+                            has_emergency_this_frame = True
+                            cv2.rectangle(out_frame, (min_x, min_y), (max_x+self.GRID_SIZE, max_y+self.GRID_SIZE), (255, 0, 255), 4)
+                            cv2.putText(out_frame, "EMERGENCY", (min_x, min_y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 255), 2)
+            
+            if not has_emergency_this_frame:
+                for (gx, gy) in cluster:
+                    cv2.rectangle(out_frame, (gx, gy), (gx+self.GRID_SIZE, gy+self.GRID_SIZE), (128, 128, 128), 1)
+                cv2.rectangle(out_frame, (min_x, min_y), (max_x+self.GRID_SIZE, max_y+self.GRID_SIZE), (0, 255, 0), 2)
             
             avg_x = int(sum(xs) / len(xs))
             avg_y = int(sum(ys) / len(ys))
             centroids.append((avg_x, avg_y))
+            
+        if has_emergency_this_frame:
+            self.emergency_active = True
+            self.emergency_linger = 30 # hold for 1-2 seconds
+        else:
+            if self.emergency_linger > 0:
+                self.emergency_linger -= 1
+                self.emergency_active = True
+            else:
+                self.emergency_active = False
 
         # ID Tracking logic maintaining user's intention
         objects = self.tracker.update(centroids)
