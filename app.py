@@ -1,4 +1,5 @@
 import os
+from platform import processor
 import cv2
 import time
 import threading
@@ -110,9 +111,10 @@ def generate_frames(lane_id):
         signal_controller.update_density(lane_id, processor.current_present)
         
         # EMERGENCY OVERRIDE LOGIC
-        if processor.emergency_active:
+        # Trigger only once per detection (avoid continuous override)
+        if processor.emergency_active and signal_controller.emergency_active is False:
             signal_controller.trigger_emergency(lane_id)
-        
+    
         # Serialize to JPEG
         ret, buffer = cv2.imencode('.jpg', out_frame)
         frame_bytes = buffer.tobytes()
