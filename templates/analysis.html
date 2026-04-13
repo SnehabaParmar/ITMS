@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Traffic Analysis Dashboard{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6 max-w-[1600px] mx-auto pb-12">
+    <!-- Top Header -->
+    <div
+        class="hud-border p-4 bg-obsidian/80 relative z-20 flex flex-col md:flex-row justify-between items-center border-neon-cyan/40 shadow-[0_0_20px_rgba(34,211,238,0.1)]">
+        <div class="flex flex-col mb-4 md:mb-0">
+            <h1 class="font-display text-3xl font-bold text-neon-cyan tracking-widest uppercase">
+                <i class="fa-solid fa-chart-line mr-3 opacity-80"></i>Traffic Analysis Dashboard
+            </h1>
+            <span class="font-mono text-xs text-slate-500 mt-1 flex items-center">
+                <span class="w-2 h-2 bg-neon-cyan inline-block mr-2 animate-pulse rounded-full"></span>
+                SYSTEM_LIVE_TELEMETRY // DATA_SYNC_ACTIVE
+            </span>
+        </div>
+        <div class="flex gap-4">
+            <div class="hud-border px-4 py-2 border-slate-700 bg-black/40">
+                <span class="text-[10px] text-slate-500 block uppercase mb-1">Active Collators</span>
+                <span id="active-lanes-count" class="text-xl font-bold font-display text-white">4 Lanes</span>
+            </div>
+            <div class="hud-border px-4 py-2 border-slate-700 bg-black/40">
+                <span class="text-[10px] text-slate-500 block uppercase mb-1">System Load</span>
+                <span id="system-status" class="text-xl font-bold font-display text-emerald-400">OPTIMAL</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Row -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="hud-border p-5 bg-panel/60 border-neon-purple/30">
+            <div class="flex justify-between items-start mb-2">
+                <span class="text-xs font-mono text-neon-purple font-bold uppercase tracking-widest">Total Vehicles
+                    Detected</span>
+                <i class="fa-solid fa-car text-neon-purple/60"></i>
+            </div>
+            <div class="text-4xl font-display font-bold text-white tracking-widest" id="total-vehicles">0</div>
+            <div class="mt-2 h-1 w-full bg-slate-900 rounded-full overflow-hidden">
+                <div class="h-full bg-neon-purple animate-pulse" style="width: 65%"></div>
+            </div>
+        </div>
+        <div class="hud-border p-5 bg-panel/60 border-yellow-400/30">
+            <div class="flex justify-between items-start mb-2">
+                <span class="text-xs font-mono text-yellow-500 font-bold uppercase tracking-widest">Avg Waiting
+                    Time</span>
+                <i class="fa-solid fa-hourglass-half text-yellow-500/60"></i>
+            </div>
+            <div class="text-4xl font-display font-bold text-white tracking-widest" id="avg-wait-time">0s</div>
+            <div class="mt-2 text-[10px] font-mono text-slate-500">OPTIMAL CYCLE ALLOCATION</div>
+        </div>
+        <div class="hud-border p-5 bg-panel/60 border-alert-red/30" id="emergency-kpi-card">
+            <div class="flex justify-between items-start mb-2">
+                <span class="text-xs font-mono text-alert-red font-bold uppercase tracking-widest">Emergency
+                    Events</span>
+                <i class="fa-solid fa-star-of-life text-alert-red animate-pulse"></i>
+            </div>
+            <div class="text-4xl font-display font-bold text-white tracking-widest" id="total-emergencies">0</div>
+            <div class="mt-2 text-[10px] font-mono text-slate-500" id="emergency-last-status">NO ACTIVE ALERTS</div>
+        </div>
+    </div>
+
+    <!-- Main Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 1. Traffic Volume Over Time -->
+        <div class="hud-border p-5 bg-panel/80 flex flex-col min-h-[400px]">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-2">
+                <h2 class="font-display text-sm font-bold tracking-widest uppercase text-slate-300">
+                    <i class="fa-solid fa-wave-square mr-2 text-neon-cyan"></i>Traffic Volume Over Time
+                </h2>
+                <span class="text-[10px] font-mono text-neon-cyan/60 animate-pulse">LIVE_FEED</span>
+            </div>
+            <div class="relative chart-container h-[300px]">
+                <canvas id="trafficVolumeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 2. Lane-wise Traffic Comparison -->
+        <div class="hud-border p-5 bg-panel/80 flex flex-col min-h-[400px]">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-2">
+                <h2 class="font-display text-sm font-bold tracking-widest uppercase text-slate-300">
+                    <i class="fa-solid fa-chart-simple mr-2 text-neon-purple"></i>Lane-wise Traffic Comparison
+                </h2>
+                <div class="flex gap-2">
+                    <span class="w-2 h-2 rounded-full bg-neon-purple"></span>
+                    <span class="w-2 h-2 rounded-full bg-neon-cyan"></span>
+                </div>
+            </div>
+            <div class="relative chart-container h-[300px]">
+                <canvas id="laneComparisonChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 3. Average Waiting Time per Lane -->
+        <div class="hud-border p-5 bg-panel/80 flex flex-col min-h-[400px]">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-2">
+                <h2 class="font-display text-sm font-bold tracking-widest uppercase text-slate-300">
+                    <i class="fa-solid fa-clock mr-2 text-yellow-400"></i>Avg Waiting Time per Lane
+                </h2>
+                <span class="text-[10px] font-mono text-slate-500">UNITS: SECONDS</span>
+            </div>
+            <div class="relative chart-container h-[300px]">
+                <canvas id="waitingTimeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 4. Signal Usage / Green Time Distribution -->
+        <div class="hud-border p-5 bg-panel/80 flex flex-col min-h-[400px]">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-2">
+                <h2 class="font-display text-sm font-bold tracking-widest uppercase text-slate-300">
+                    <i class="fa-solid fa-traffic-light mr-2 text-emerald-400"></i>
+                    Signal Timing Comparison
+                </h2>
+                <span class="text-[10px] font-mono text-slate-500">STATIC vs SMART</span>
+            </div>
+
+            <!-- 🔥 SIMPLE CLEAN CONTAINER -->
+            <div class="relative chart-container">
+                <canvas id="signalCompareChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 5. Traffic Density Distribution -->
+        <div class="hud-border p-5 bg-panel/80 flex flex-col min-h-[400px]">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-2">
+                <h2 class="font-display text-sm font-bold tracking-widest uppercase text-slate-300">
+                    <i class="fa-solid fa-braille mr-2 text-orange-400"></i>Traffic Density Levels
+                </h2>
+                <span class="text-[10px] font-mono text-slate-500">GRID_COORDINATES</span>
+            </div>
+            <div class="flex-1 relative flex items-center justify-center p-4">
+                <div class="w-full max-w-[300px]">
+                    <canvas id="densityDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Emergency Event Analysis -->
+        <div class="hud-border p-5 bg-panel/80 flex flex-col min-h-[400px]">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-2">
+                <h2 class="font-display text-sm font-bold tracking-widest uppercase text-slate-300">
+                    <i class="fa-solid fa-truck-medical mr-2 text-alert-red"></i>Emergency Impact Analysis
+                </h2>
+                <span class="text-[10px] font-mono text-alert-red animate-ping">CRITICAL</span>
+            </div>
+            <div class="flex-1 flex flex-col justify-center space-y-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-black/40 p-4 border-l-2 border-alert-red">
+                        <span class="text-[10px] text-slate-500 uppercase block mb-1">Detections</span>
+                        <span id="emergency-count-val" class="text-3xl font-display font-bold text-white">0</span>
+                    </div>
+                    <div class="bg-black/40 p-4 border-l-2 border-neon-cyan">
+                        <span class="text-[10px] text-slate-500 uppercase block mb-1">Priority Overrides</span>
+                        <span id="priority-overrides-val" class="text-3xl font-display font-bold text-white">0</span>
+                    </div>
+                </div>
+                <!-- Mini Bar chart for emergency response time simulated/derived -->
+                <div class="flex-1 relative chart-container max-h-[150px]">
+                    <canvas id="emergencyEventChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .chart-container {
+        position: relative;
+        width: 100%;
+        height: 300px;
+        /* fixed height */
+    }
+
+    .chart-container canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+<script src="{{ url_for('static', filename='uploads/analysis.js') }}"></script>
+{% endblock %}

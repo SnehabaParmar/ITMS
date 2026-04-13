@@ -7,7 +7,7 @@ def get_gray(img):
 
 class Tracker:
     """Assigns and tracks IDs"""
-    def __init__(self, max_disappeared=15, max_distance=100):
+    def __init__(self, max_disappeared=15, max_distance=60):
         self.next_object_id = 0
         self.objects = {} # id: (cx, cy)
         self.disappeared = {} # id: count
@@ -108,22 +108,26 @@ class SignalController:
     def calculate_cycle_timings(self):
         self.genetic_optimize()
 
-        for i in range(4):
-            base = self.decide_time(self.lane_densities[i])
-            self.timings[i] = min(50, int(base * (self.ga_best_multiplier / 2.5)))
+        # Calculate timing ONLY for the newly switched current lane based on live density
+        base = self.decide_time(self.lane_densities[self.current_lane])
+        self.timings[self.current_lane] = min(50, int(base * (self.ga_best_multiplier / 2.5)))
 
     def trigger_emergency(self, lane_id):
         if not self.emergency_active:
             self.emergency_active = True
             self.emergency_lane = lane_id
-            self.saved_lane = self.current_lane
+            # self.saved_lane = self.current_lane
+            self.saved_lane = (self.current_lane + 1) % 4
+            print(f"🚑 Emergency triggered on lane {lane_id}. Switching to lane {self.saved_lane} after buffer.")
 
             # Step 1 → give 3 sec to current lane
-            self.timings[self.current_lane] = 3
+            # self.timings[self.current_lane] = 3
+            self.prepare_delay = 3
+            self.clear_buffer = 4
             self.phase_start_time = time.time()
             self.emergency_phase = 'prepare'
 
-    def update(self):
+    def update(self, ambulance_present = False):
         now = time.time()
 
         # =============================
@@ -135,7 +139,7 @@ class SignalController:
 
             # Step 1: Finish current lane (3 sec)
             if self.emergency_phase == 'prepare':
-                if elapsed >= 3:
+                if elapsed >= self.prepare_delay:
                     self.current_lane = self.emergency_lane
                     self.signals = ['red'] * 4
                     self.signals[self.current_lane] = 'green'
@@ -147,28 +151,39 @@ class SignalController:
                     self.phase_start_time = now
                     self.emergency_phase = 'active'
 
-            # Step 2: Emergency running
             elif self.emergency_phase == 'active':
-                # wait until no retrigger → means ambulance gone
-                if now - self.phase_start_time > self.timings[self.current_lane]:
+                # 🚑 If ambulance STILL present → KEEP GREEN
+                if ambulance_present:
+                    return   # do nothing, keep signal green
+
+                # 🚑 If ambulance GONE → start clearing
+                else:
                     self.phase_start_time = now
-                    self.timings[self.current_lane] = 3
+                    self.timings[self.current_lane] = 4   # 3–4 sec buffer
                     self.emergency_phase = 'clearing'
 
-            # Step 3: Clearing (3 sec red)
+            
             elif self.emergency_phase == 'clearing':
-                if elapsed >= 3:
+                elapsed = now - self.phase_start_time
+                if elapsed >= self.clear_buffer:
                     self.emergency_active = False
+                    self.emergency_phase = None
 
-                    # Resume NORMAL order properly
-                    self.current_lane = (self.saved_lane + 1) % 4
+                    resume_lane = self.saved_lane
+
+                    if resume_lane == self.emergency_lane:
+                        resume_lane = (resume_lane + 1) % 4
+
+                    self.current_lane = resume_lane
                     self.last_switch_time = now
+
+                    self.calculate_cycle_timings()
+
 
                     self.signals = ['red'] * 4
                     self.signals[self.current_lane] = 'green'
-
                     return
-
+                
             return  # STOP normal logic during emergency
 
         # =============================
@@ -187,8 +202,7 @@ class SignalController:
             self.current_lane = (self.current_lane + 1) % 4
             self.last_switch_time = now
 
-            if self.current_lane == 0:
-                self.calculate_cycle_timings()
+            self.calculate_cycle_timings()
 
             self.signals = ['red'] * 4
             self.signals[self.current_lane] = 'green'
@@ -205,7 +219,8 @@ class SignalController:
             'signals': self.signals,
             'remaining_time': remaining,
             'densities': self.lane_densities,
-            'timings': self.timings
+            'timings': self.timings,
+            'emergency_active': [False]*4
         }
 
     def genetic_optimize(self):
@@ -253,7 +268,7 @@ class LaneProcessor:
         self.THRESHOLD = 30  
         self.ENTRY_LINE_Y = None
         self.TOP_LINE_Y = None
-        self.CLUSTER_THRESHOLD = self.GRID_SIZE * 3 
+        self.CLUSTER_THRESHOLD = self.GRID_SIZE * 2 
         self.current_present = 0
         self.emergency_active = False
         self.emergency_linger = 0
@@ -266,11 +281,11 @@ class LaneProcessor:
 
         if self.gray_prev is None:
             self.gray_prev = gray_curr
-            return frame, 0
+            return frame, 0 ,0 ,0
             
         # 2. Manual Motion Mask (NumPy) diff
         diff = np.abs(gray_curr.astype(np.int16) - self.gray_prev.astype(np.int16)).astype(np.uint8)
-
+        
         # 3. Scan for active Grid Blocks (Vectorized for speed)
         h, w = gray_curr.shape
         h_blocks = h // self.GRID_SIZE
@@ -316,22 +331,47 @@ class LaneProcessor:
         has_emergency_this_frame = False
         
         # 5. Process Clusters & Tracking Prep
+        centroids = []
+
+        # loop clusters
+        for cluster in current_frame_clusters:
+            xs = [c[0] for c in cluster]
+            ys = [c[1] for c in cluster]
+            avg_x = int(sum(xs) / len(xs))
+            avg_y = int(sum(ys) / len(ys))
+            centroids.append((avg_x, avg_y))
+
+        # ONLY ONCE per frame
+        objects = self.tracker.update(centroids)
         for cluster in current_frame_clusters:
             xs = [c[0] for c in cluster]
             ys = [c[1] for c in cluster]
             min_x, min_y = min(xs), min(ys)
             max_x, max_y = max(xs), max(ys)
             
+            cy_center = (min_y + max_y) // 2
+            distance_factor = cy_center / frame.shape[0]
             # --- EMERGENCY DETECT VISUAL HEURISTICS ---
             width = (max_x - min_x) + self.GRID_SIZE
             height = (max_y - min_y) + self.GRID_SIZE
             
             # 1. Size check
-            is_large = width > 40 and height > 40
+            is_large = width > 35 and height > 35
             
             is_ambulance_visually = False
             
+
             if is_large:
+
+                aspect_ratio = width / (height + 1e-5)
+                is_ambulance_shape = aspect_ratio > 1.3 or aspect_ratio < 0.75
+                if not is_ambulance_shape:
+                    # still add to centroids but skip emergency check
+                    for (gx, gy) in cluster:
+                        cv2.rectangle(out_frame, (gx, gy), (gx+self.GRID_SIZE, gy+self.GRID_SIZE), (128, 128, 128), 1)
+                    cv2.rectangle(out_frame, (min_x, min_y), (max_x+self.GRID_SIZE, max_y+self.GRID_SIZE), (0, 255, 0), 2)
+                    continue
+                
                 # Extract original frame slice corresponding to the cluster bbox
                 fy1, fy2 = max(0, min_y), min(frame.shape[0], max_y + self.GRID_SIZE)
                 fx1, fx2 = max(0, min_x), min(frame.shape[1], max_x + self.GRID_SIZE)
@@ -341,45 +381,152 @@ class LaneProcessor:
                     # 2. White color check
                     white_mask = cv2.inRange(roi, (180, 180, 180), (255, 255, 255))
                     white_ratio = cv2.countNonZero(white_mask) / (roi.shape[0] * roi.shape[1] + 1e-5)
-                    is_white = white_ratio > 0.12 
-                    
+                    is_white = white_ratio > 0.25   # slightly stricter
+
                     if is_white:
-                        # 3. Flashing red/blue light check
-                        # Crop to top 50% where the lightbar is located. This ignores side-door logos!
-                        top_h = max(5, int(roi.shape[0] * 0.5))
-                        roi_top = roi[:top_h, :]
-                        
+                        red_ratio = 0
+                        horizontal_ratio = 0
+                        flash_counter = 0
+                        is_ambulance_visually = False
+                        # 3. Focus only on top-center (light bar area)
+                        # top_h = max(5, int(roi.shape[0] * 0.55))
+                        # x1 = int(roi.shape[1] * 0.3)
+                        # x2 = int(roi.shape[1] * 0.7)
+                        # roi_top = roi[:top_h, x1:x2]
+                       
+                        # --- FINAL DECISION ---
+                        # ================= DISTANCE BASED ROI =================
+                        if distance_factor < 0.6:
+                            top_h = max(5, int(roi.shape[0] * 0.6))   # far → bigger region
+                            min_flash = 2
+                            min_red_ratio = 0.005
+                            max_red_ratio = 0.5
+                            min_pixels = 5
+                            min_horizontal = 0.05
+                        else:
+                            top_h = max(5, int(roi.shape[0] * 0.25))  # near → strict
+                            min_flash = 4
+                            min_red_ratio = 0.02
+                            max_red_ratio = 0.35
+                            min_pixels = 20
+                            min_horizontal = 0.2
+                            
+
+                        x1 = int(roi.shape[1] * 0.3)
+                        x2 = int(roi.shape[1] * 0.7)
+
+                        roi_top = roi[:top_h, x1:x2]
+
+                          # Convert to HSV
                         hsv = cv2.cvtColor(roi_top, cv2.COLOR_BGR2HSV)
-                        
-                        # Look for HIGH saturation (intense color) and HIGH value (bright LED lights)
+
+                        # --- RED MASK ---
                         mask_red1 = cv2.inRange(hsv, (0, 100, 210), (10, 255, 255))
                         mask_red2 = cv2.inRange(hsv, (170, 100, 210), (180, 255, 255))
                         red_mask = cv2.bitwise_or(mask_red1, mask_red2)
-                        
-                        blue_mask = cv2.inRange(hsv, (100, 100, 210), (130, 255, 255))
-                        
+
                         red_pixels = cv2.countNonZero(red_mask)
-                        blue_pixels = cv2.countNonZero(blue_mask)
+
+                        # --- PER CLUSTER MEMORY ---
+                        if not hasattr(self, "cluster_memory"):
+                            self.cluster_memory = {}
+
+                        # cluster_id = (min_x//30 , min_y//30)
+
+                        # if cluster_id not in self.cluster_memory:
+                        #     self.cluster_memory[cluster_id] = {"prev_red": 0, "flash": 0}
+                        avg_x = int(sum(xs) / len(xs))
+                        avg_y = int(sum(ys) / len(ys))
+
+                        # Match this cluster to nearest tracked object
+                        cluster_track_id = None
+                        min_d = 60
+                        for obj_id, (ox, oy) in objects.items():
+                            d = ((avg_x - ox)**2 + (avg_y - oy)**2) ** 0.5
+                            if d < min_d:
+                                min_d = d
+                                cluster_track_id = obj_id
+
+                        cluster_id = cluster_track_id if cluster_track_id is not None else (min_x//30, min_y//30)
                         
-                        if red_pixels > 12 or blue_pixels > 12:
+                        if cluster_id not in self.cluster_memory:
+                            self.cluster_memory[cluster_id] = {"prev_red": 0, "flash": 0}
+
+                        prev_red = self.cluster_memory[cluster_id]["prev_red"]
+                        flash_counter = self.cluster_memory[cluster_id]["flash"]
+                        
+                        # --- RATIO CHECK ---
+                        red_ratio = red_pixels / (roi_top.shape[0] * roi_top.shape[1] + 1e-5)
+
+                        red_cols = np.sum(red_mask > 0, axis=0)
+                        active_cols = np.count_nonzero(red_cols > 3)
+
+                        horizontal_ratio = active_cols / (roi_top.shape[1] + 1e-5)
+                        red_change = abs(red_pixels - prev_red)
+
+                        is_significant_flash = (
+                            red_change > 15 and          # stronger change threshold
+                            red_pixels > min_pixels and  # must have real red presence
+                            red_ratio > min_red_ratio    # not just noise
+                        )
+                        if is_significant_flash:
+                            flash_counter += 1
+                        elif red_pixels < prev_red * 0.4:  # sharp drop also counts
+                            flash_counter = max(0, flash_counter - 1)  # decay instead of increment on drop
+                        else:
+                            flash_counter = max(0, flash_counter - 1)
+
+                        # store back
+                        self.cluster_memory[cluster_id]["prev_red"] = red_pixels
+                        self.cluster_memory[cluster_id]["flash"] = flash_counter
+
+
+                        # Allow weak signals for far distance
+                        should_skip = False
+                        if distance_factor < 0.5:
+                            if red_pixels < 2:
+                                should_skip = True
+                        else:
+                            if red_pixels < min_pixels or horizontal_ratio < min_horizontal:
+                                should_skip = True
+
+                        if not should_skip:
+                            if (
+                                flash_counter >= min_flash and
+                                red_ratio > min_red_ratio and
+                                red_ratio < max_red_ratio
+                            ):
+                                is_ambulance_visually = True
+                                has_emergency_this_frame = True
+
+                        # --- FINAL DECISION ---
+                        if (
+                            flash_counter >= min_flash and
+                            red_ratio > min_red_ratio and
+                            red_ratio < max_red_ratio
+                        ):
                             is_ambulance_visually = True
                             has_emergency_this_frame = True
-            
-            if is_ambulance_visually:
-                cv2.rectangle(out_frame, (min_x, min_y), (max_x+self.GRID_SIZE, max_y+self.GRID_SIZE), (255, 0, 255), 4)
-                cv2.putText(out_frame, "EMERGENCY", (min_x, min_y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 255), 2)
-            else:
-                for (gx, gy) in cluster:
-                    cv2.rectangle(out_frame, (gx, gy), (gx+self.GRID_SIZE, gy+self.GRID_SIZE), (128, 128, 128), 1)
-                cv2.rectangle(out_frame, (min_x, min_y), (max_x+self.GRID_SIZE, max_y+self.GRID_SIZE), (0, 255, 0), 2)
 
-            avg_x = int(sum(xs) / len(xs))
-            avg_y = int(sum(ys) / len(ys))
-            centroids.append((avg_x, avg_y))
+                       
+                # =========================
+                # DRAWING
+                # =========================
+                if is_ambulance_visually:
+                    cv2.rectangle(out_frame, (min_x, min_y), (max_x+self.GRID_SIZE, max_y+self.GRID_SIZE), (255, 0, 255), 4)
+                    cv2.putText(out_frame, "EMERGENCY", (min_x, min_y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 255), 2)
+                else:
+                    for (gx, gy) in cluster:
+                        cv2.rectangle(out_frame, (gx, gy), (gx+self.GRID_SIZE, gy+self.GRID_SIZE), (128, 128, 128), 1)
+                    cv2.rectangle(out_frame, (min_x, min_y), (max_x+self.GRID_SIZE, max_y+self.GRID_SIZE), (0, 255, 0), 2)
 
+
+        # =========================
+        # FINAL EMERGENCY STATE
+        # =========================
         if has_emergency_this_frame:
             self.emergency_active = True
-            self.emergency_linger = 30 # hold for 1-2 seconds
+            self.emergency_linger = 30  # hold for stability
         else:
             if self.emergency_linger > 0:
                 self.emergency_linger -= 1
@@ -388,7 +535,6 @@ class LaneProcessor:
                 self.emergency_active = False
 
         # ID Tracking logic
-        objects = self.tracker.update(centroids)
         self.counts_history.append(len(objects))
         if len(self.counts_history) > 30:
             self.counts_history.pop(0)
@@ -423,4 +569,4 @@ class LaneProcessor:
         self.current_present = active_cnt
 
         self.gray_prev = gray_curr
-        return out_frame, avg_density
+        return out_frame, avg_density, self.current_present, self.crossing_count

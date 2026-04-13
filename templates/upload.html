@@ -79,8 +79,12 @@
                                 class="fa-solid fa-cloud-arrow-up text-xl text-slate-500 group-hover:text-neon-purple transition-colors"></i>
                         </div>
                         <span
-                            class="font-display uppercase tracking-widest text-slate-400 group-hover:text-white transition-colors text-sm font-semibold text-center">
-                            Select Video Stream File
+                            class="font-display uppercase tracking-widest transition-colors text-sm font-semibold text-center {% if current_videos and current_videos[lane-1] %}text-neon-cyan truncate px-4 w-full{% else %}text-slate-400 group-hover:text-white{% endif %}">
+                            {% if current_videos and current_videos[lane-1] %}
+                                Current: {{ current_videos[lane-1] }}
+                            {% else %}
+                                Select Video Stream File
+                            {% endif %}
                         </span>
                         <span class="font-mono text-[9px] text-slate-600 mt-1 uppercase text-center max-w-[80%]">
                             Supported Formats: MP4 <br> Max Size: 500MB
@@ -90,7 +94,7 @@
                     <!-- The actual invisible input filling the zone -->
                     <input type="file" name="video_{{lane}}" accept="video/*" title="Upload Video for Node {{lane}}"
                         class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50 text-[0px] file-input-node"
-                        required />
+                        {% if not current_videos or not current_videos[lane-1] %}required{% endif %} />
 
                     <!-- Corner Brackets in dropzone -->
                     <div
@@ -155,7 +159,7 @@
         form.addEventListener('submit', (e) => {
             let allSelected = true;
             inputs.forEach(input => {
-                if (input.files.length === 0) {
+                if (input.hasAttribute('required') && input.files.length === 0) {
                     allSelected = false;
                     const container = input.closest('.hud-border');
                     container.classList.add('border-alert-red');
