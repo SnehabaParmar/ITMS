@@ -94,15 +94,21 @@ class SignalController:
         self.lane_densities[lane_id] = count
 
     def decide_time(self, active_count):
-        low = max(0, (15 - active_count) / 15)
-        medium = max(0, 1 - abs(active_count - 20) / 10)
-        high = max(0, (active_count - 15) / 15)
+        # Adjusted ranges for your data (0–15 vehicles typical)
+
+        low = max(0, (8 - active_count) / 8)
+        medium = max(0, 1 - abs(active_count - 10) / 5)
+        high = max(0, (active_count - 8) / 8)
 
         total = low + medium + high
         if total == 0:
             return 10
 
-        time_val = (low * 15 + medium * 30 + high * 50) / total
+        time_val = (low * 10 + medium * 25 + high * 45) / total
+
+        print(f"[FUZZY DEBUG] count={active_count}, low={low:.2f}, med={medium:.2f}, high={high:.2f}")
+        print(f"[TIME OUTPUT] {int(time_val)} sec\n")
+
         return int(time_val)
 
     def calculate_cycle_timings(self):
@@ -339,6 +345,9 @@ class LaneProcessor:
             ys = [c[1] for c in cluster]
             avg_x = int(sum(xs) / len(xs))
             avg_y = int(sum(ys) / len(ys))
+
+            if len(cluster) < 3:
+                continue
             centroids.append((avg_x, avg_y))
 
         # ONLY ONCE per frame
@@ -381,7 +390,7 @@ class LaneProcessor:
                     # 2. White color check
                     white_mask = cv2.inRange(roi, (180, 180, 180), (255, 255, 255))
                     white_ratio = cv2.countNonZero(white_mask) / (roi.shape[0] * roi.shape[1] + 1e-5)
-                    is_white = white_ratio > 0.25   # slightly stricter
+                    is_white = white_ratio > 0.20   # slightly stricter
 
                     if is_white:
                         red_ratio = 0
@@ -398,22 +407,22 @@ class LaneProcessor:
                         # ================= DISTANCE BASED ROI =================
                         if distance_factor < 0.6:
                             top_h = max(5, int(roi.shape[0] * 0.6))   # far → bigger region
-                            min_flash = 2
-                            min_red_ratio = 0.005
-                            max_red_ratio = 0.5
-                            min_pixels = 5
-                            min_horizontal = 0.05
+                            min_flash = 1
+                            min_red_ratio = 0.003
+                            max_red_ratio = 0.6
+                            min_pixels = 3
+                            min_horizontal = 0.03
                         else:
                             top_h = max(5, int(roi.shape[0] * 0.25))  # near → strict
-                            min_flash = 4
-                            min_red_ratio = 0.02
-                            max_red_ratio = 0.35
-                            min_pixels = 20
-                            min_horizontal = 0.2
+                            min_flash = 3
+                            min_red_ratio = 0.01
+                            max_red_ratio = 0.5
+                            min_pixels = 10
+                            min_horizontal = 0.1
                             
 
-                        x1 = int(roi.shape[1] * 0.3)
-                        x2 = int(roi.shape[1] * 0.7)
+                        x1 = int(roi.shape[1] * 0.2)
+                        x2 = int(roi.shape[1] * 0.8)
 
                         roi_top = roi[:top_h, x1:x2]
 
@@ -440,7 +449,7 @@ class LaneProcessor:
 
                         # Match this cluster to nearest tracked object
                         cluster_track_id = None
-                        min_d = 60
+                        min_d = 80
                         for obj_id, (ox, oy) in objects.items():
                             d = ((avg_x - ox)**2 + (avg_y - oy)**2) ** 0.5
                             if d < min_d:
@@ -471,10 +480,8 @@ class LaneProcessor:
                         )
                         if is_significant_flash:
                             flash_counter += 1
-                        elif red_pixels < prev_red * 0.4:  # sharp drop also counts
-                            flash_counter = max(0, flash_counter - 1)  # decay instead of increment on drop
                         else:
-                            flash_counter = max(0, flash_counter - 1)
+                            flash_counter = max(0, flash_counter - 0.5)
 
                         # store back
                         self.cluster_memory[cluster_id]["prev_red"] = red_pixels
@@ -499,14 +506,14 @@ class LaneProcessor:
                                 is_ambulance_visually = True
                                 has_emergency_this_frame = True
 
-                        # --- FINAL DECISION ---
-                        if (
-                            flash_counter >= min_flash and
-                            red_ratio > min_red_ratio and
-                            red_ratio < max_red_ratio
-                        ):
-                            is_ambulance_visually = True
-                            has_emergency_this_frame = True
+                        # # --- FINAL DECISION ---
+                        # if (
+                        #     flash_counter >= min_flash and
+                        #     red_ratio > min_red_ratio and
+                        #     red_ratio < max_red_ratio
+                        # ):
+                        #     is_ambulance_visually = True
+                        #     has_emergency_this_frame = True
 
                        
                 # =========================
@@ -535,19 +542,14 @@ class LaneProcessor:
                 self.emergency_active = False
 
         # ID Tracking logic
-        self.counts_history.append(len(objects))
-        if len(self.counts_history) > 30:
-            self.counts_history.pop(0)
-            
-        avg_density = int(np.mean(self.counts_history)) if self.counts_history else 0
+         # Determine actual valid present vehicles inside ROI
+        active_cnt = 0
         
         # Draw Lines (Top ROI Boundary & Bottom Exit)
         line_color = (0, 255, 0) if is_green else (0, 0, 255)
         cv2.line(out_frame, (0, self.ENTRY_LINE_Y), (w, self.ENTRY_LINE_Y), line_color, 2)
         cv2.line(out_frame, (0, self.TOP_LINE_Y), (w, self.TOP_LINE_Y), (255, 165, 0), 2)
         
-        # Determine actual valid present vehicles inside ROI
-        active_cnt = 0
         
         # COUNTING LOGIC & ROI Checks
         for obj_id, centroid in objects.items():
@@ -556,6 +558,7 @@ class LaneProcessor:
             # ROI Density check
             if self.TOP_LINE_Y <= cy <= self.ENTRY_LINE_Y:
                 active_cnt += 1
+            
                 
             if obj_id not in getattr(self, 'first_y', {}):
                 if not hasattr(self, 'first_y'): self.first_y = {}
@@ -566,6 +569,12 @@ class LaneProcessor:
                 self.crossing_count += 1
                 self.counted_ids.add(obj_id)
 
+
+        if len(self.counts_history) > 30:
+            self.counts_history.pop(0)
+
+        self.counts_history.append(active_cnt)
+        avg_density = int(np.mean(self.counts_history)) if self.counts_history else 0
         self.current_present = active_cnt
 
         self.gray_prev = gray_curr
