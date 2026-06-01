@@ -6,7 +6,7 @@ def get_gray(img):
     return (0.299 * img[:,:,2] + 0.587 * img[:,:,1] + 0.114 * img[:,:,0]).astype(np.uint8)
 
 class Tracker:
-    """Assigns and tracks IDs"""
+#    Assigns and tracks IDs
     def __init__(self, max_disappeared=15, max_distance=60):
         self.next_object_id = 0
         self.objects = {} # id: (cx, cy)
@@ -106,9 +106,6 @@ class SignalController:
 
         time_val = (low * 10 + medium * 25 + high * 45) / total
 
-        print(f"[FUZZY DEBUG] count={active_count}, low={low:.2f}, med={medium:.2f}, high={high:.2f}")
-        print(f"[TIME OUTPUT] {int(time_val)} sec\n")
-
         return int(time_val)
 
     def calculate_cycle_timings(self):
@@ -127,7 +124,6 @@ class SignalController:
             print(f"🚑 Emergency triggered on lane {lane_id}. Switching to lane {self.saved_lane} after buffer.")
 
             # Step 1 → give 3 sec to current lane
-            # self.timings[self.current_lane] = 3
             self.prepare_delay = 3
             self.clear_buffer = 4
             self.phase_start_time = time.time()
@@ -136,9 +132,7 @@ class SignalController:
     def update(self, ambulance_present = False):
         now = time.time()
 
-        # =============================
         # 🚑 EMERGENCY MODE
-        # =============================
         if self.emergency_active:
 
             elapsed = now - self.phase_start_time
@@ -192,9 +186,7 @@ class SignalController:
                 
             return  # STOP normal logic during emergency
 
-        # =============================
         # 🚦 NORMAL MODE
-        # =============================
         elapsed = now - self.last_switch_time
         allocated = self.timings[self.current_lane]
 
@@ -260,7 +252,7 @@ class SignalController:
 
         self.ga_best_multiplier = population[0]
 class LaneProcessor:
-    """Processes a single lane video feed using grid-based clustering and tracking."""
+    # Processes a single lane video feed using grid-based clustering and tracking.
     def __init__(self, lane_id):
         self.lane_id = lane_id
         self.gray_prev = None
@@ -270,11 +262,11 @@ class LaneProcessor:
         self.counted_ids = set()
         
         # Parameters from User
-        self.GRID_SIZE = 20
-        self.THRESHOLD = 30  
+        self.GRID_SIZE = 15
+        self.THRESHOLD = 25  
         self.ENTRY_LINE_Y = None
         self.TOP_LINE_Y = None
-        self.CLUSTER_THRESHOLD = self.GRID_SIZE * 2 
+        self.CLUSTER_THRESHOLD = self.GRID_SIZE * 3 
         self.current_present = 0
         self.emergency_active = False
         self.emergency_linger = 0
@@ -397,11 +389,6 @@ class LaneProcessor:
                         horizontal_ratio = 0
                         flash_counter = 0
                         is_ambulance_visually = False
-                        # 3. Focus only on top-center (light bar area)
-                        # top_h = max(5, int(roi.shape[0] * 0.55))
-                        # x1 = int(roi.shape[1] * 0.3)
-                        # x2 = int(roi.shape[1] * 0.7)
-                        # roi_top = roi[:top_h, x1:x2]
                        
                         # --- FINAL DECISION ---
                         # ================= DISTANCE BASED ROI =================
@@ -506,19 +493,8 @@ class LaneProcessor:
                                 is_ambulance_visually = True
                                 has_emergency_this_frame = True
 
-                        # # --- FINAL DECISION ---
-                        # if (
-                        #     flash_counter >= min_flash and
-                        #     red_ratio > min_red_ratio and
-                        #     red_ratio < max_red_ratio
-                        # ):
-                        #     is_ambulance_visually = True
-                        #     has_emergency_this_frame = True
 
-                       
-                # =========================
                 # DRAWING
-                # =========================
                 if is_ambulance_visually:
                     cv2.rectangle(out_frame, (min_x, min_y), (max_x+self.GRID_SIZE, max_y+self.GRID_SIZE), (255, 0, 255), 4)
                     cv2.putText(out_frame, "EMERGENCY", (min_x, min_y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 255), 2)
@@ -528,9 +504,7 @@ class LaneProcessor:
                     cv2.rectangle(out_frame, (min_x, min_y), (max_x+self.GRID_SIZE, max_y+self.GRID_SIZE), (0, 255, 0), 2)
 
 
-        # =========================
         # FINAL EMERGENCY STATE
-        # =========================
         if has_emergency_this_frame:
             self.emergency_active = True
             self.emergency_linger = 30  # hold for stability

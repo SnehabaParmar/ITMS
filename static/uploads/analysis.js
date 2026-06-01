@@ -345,6 +345,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (waitTimes.some(v => isNaN(v))) return;
 
                 waitingChart.data.datasets[0].data = waitTimes;
+                // 🔥 Calculate average waiting time
+                const avgWait = Math.round(
+                    waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length
+                );
+
+                // Update UI
+                document.getElementById('avg-wait-time').textContent = avgWait + "s";
                 waitingChart.update('none');
             });
     }
